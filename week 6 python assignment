@@ -1,0 +1,73 @@
+import requests
+import os
+import urllib.parse
+from datetime import datetime
+
+def download_image():
+    """
+    Prompts the user for an image URL, downloads the image,
+    and saves it to a 'Fetched_Images' directory.
+    Handles various errors gracefully.
+    """
+    # Create the directory if it doesn't exist, respecting the exist_ok=True principle.
+    image_dir = "Fetched_Images"
+    os.makedirs(image_dir, exist_ok=True)
+    
+    print("Welcome to the Ubuntu-Inspired Image Fetcher!")
+    print("Please provide a URL to an image you would like to download.")
+
+    while True:
+        url = input("\nEnter the image URL (or 'exit' to quit): ").strip()
+
+        if url.lower() == 'exit':
+            print("Exiting program. Goodbye!")
+            break
+
+        if not url:
+            print("The URL cannot be empty. Please try again.")
+            continue
+
+        try:
+            # Respectfully send a request to the server with a timeout.
+            # Use a stream for memory efficiency on large files.
+            print(f"Connecting to {url}...")
+            response = requests.get(url, stream=True, timeout=10)
+            
+            # Check for HTTP errors (e.g., 404, 500) and raise an exception if one occurs.
+            response.raise_for_status()
+
+            # --- Extract or generate a filename ---
+            # Parse the URL to get the filename from the path.
+            path_segments = urllib.parse.urlparse(url).path.split('/')
+            filename = path_segments[-1] if path_segments[-1] else f"image_{datetime.now().strftime('%Y%m%d%H%M%S')}.jpg"
+            
+            # Sanitize the filename to prevent issues with special characters.
+            filename = urllib.parse.unquote(filename)
+            
+            # Construct the full path to save the file.
+            file_path = os.path.join(image_dir, filename)
+
+            # Save the image in binary mode.
+            print(f"Downloading image to {file_path}...")
+            with open(file_path, 'wb') as file:
+                # Iterate over the content in chunks for efficiency.
+                for chunk in response.iter_content(chunk_size=8192):
+                    file.write(chunk)
+
+            print("\nDownload successful! The image has been saved.")
+            break # Exit the loop on success
+
+        except requests.exceptions.RequestException as e:
+            # Handle specific requests library errors gracefully.
+            print(f"Connection Error: Could not connect to the URL. Please check your internet connection or the URL.")
+            print(f"Details: {e}")
+            
+        except Exception as e:
+            # Catch any other unexpected errors.
+            print(f"An unexpected error occurred: {e}")
+            print("Please try a different URL.")
+            
+# Run the function when the script is executed.
+if __name__ == "__main__":
+    download_image()
+    
